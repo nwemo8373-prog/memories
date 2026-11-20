@@ -1,0 +1,116 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "NEGM GESTURE user profile and control preferences",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID" },
+        "name": { "type": "string" },
+        "username": { "type": "string" },
+        "email": { "type": "string" },
+        "photo": { "type": "string" },
+        "language": { "type": "string", "enum": ["ar", "en"] },
+        "sensitivity": { "type": "integer" },
+        "holdDurationMs": { "type": "integer" },
+        "soundEnabled": { "type": "boolean" },
+        "vibrationEnabled": { "type": "boolean" },
+        "batterySaver": { "type": "boolean" },
+        "preferredCamera": { "type": "string", "enum": ["front", "back"] },
+        "handPreference": { "type": "string", "enum": ["both", "right", "left"] },
+        "pauseOnLeave": { "type": "boolean" },
+        "syncHistoryEnabled": { "type": "boolean" },
+        "activeProfileId": { "type": "string" },
+        "totalCommandsExecuted": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": [
+        "userId", "name", "username", "email", "photo", "language",
+        "sensitivity", "holdDurationMs", "soundEnabled", "vibrationEnabled",
+        "batterySaver", "preferredCamera", "handPreference", "pauseOnLeave",
+        "syncHistoryEnabled", "activeProfileId", "totalCommandsExecuted",
+        "createdAt", "updatedAt"
+      ]
+    },
+    "ControlProfile": {
+      "title": "ControlProfile",
+      "description": "Named gesture-to-action mapping profile",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "defaultProfile": { "type": "boolean" },
+        "mappings": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "defaultProfile", "mappings", "createdAt", "updatedAt"]
+    },
+    "GestureConfig": {
+      "title": "GestureConfig",
+      "description": "Configured or custom hand gesture command",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "gestureKey": { "type": "string" },
+        "displayNameAr": { "type": "string" },
+        "displayNameEn": { "type": "string" },
+        "descriptionAr": { "type": "string" },
+        "descriptionEn": { "type": "string" },
+        "actionKey": { "type": "string" },
+        "targetAppPackage": { "type": "string" },
+        "targetAppName": { "type": "string" },
+        "enabled": { "type": "boolean" },
+        "custom": { "type": "boolean" },
+        "sensitivity": { "type": "integer" },
+        "holdDurationMs": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "gestureKey", "displayNameAr", "displayNameEn",
+        "descriptionAr", "descriptionEn", "actionKey", "enabled",
+        "custom", "sensitivity", "holdDurationMs", "createdAt", "updatedAt"
+      ]
+    },
+    "SyncedActivityLog": {
+      "title": "SyncedActivityLog",
+      "description": "Optional cloud-synced gesture execution log entry",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "gestureKey": { "type": "string" },
+        "gestureLabel": { "type": "string" },
+        "actionKey": { "type": "string" },
+        "actionLabel": { "type": "string" },
+        "succeeded": { "type": "boolean" },
+        "detailMessage": { "type": "string" },
+        "confidence": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "gestureKey", "gestureLabel", "actionKey",
+        "actionLabel", "succeeded", "detailMessage", "confidence", "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Authenticated user profile and NEGM GESTURE settings"
+    },
+    "/users/{userId}/profiles/{profileId}": {
+      "schema": { "$ref": "#/entities/ControlProfile" },
+      "description": "User's multi-profile gesture mappings"
+    },
+    "/users/{userId}/gestures/{gestureId}": {
+      "schema": { "$ref": "#/entities/GestureConfig" },
+      "description": "User's configured and custom hand gestures"
+    },
+    "/users/{userId}/activityLogs/{logId}": {
+      "schema": { "$ref": "#/entities/SyncedActivityLog" },
+      "description": "Optional cloud-synced gesture activity history"
+    }
+  }
+}

@@ -1,0 +1,215 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+             data.username is string && data.username.size() >= 2 && data.username.size() <= 40 &&
+             data.email is string && data.email.size() <= 120 &&
+             data.photo is string && data.photo.size() <= 500 &&
+             data.language in ['ar', 'en'] &&
+             data.sensitivity is int && data.sensitivity >= 1 && data.sensitivity <= 100 &&
+             data.holdDurationMs is int && data.holdDurationMs >= 150 && data.holdDurationMs <= 2000 &&
+             data.soundEnabled is bool &&
+             data.vibrationEnabled is bool &&
+             data.batterySaver is bool &&
+             data.preferredCamera in ['front', 'back'] &&
+             data.handPreference in ['both', 'right', 'left'] &&
+             data.pauseOnLeave is bool &&
+             data.syncHistoryEnabled is bool &&
+             data.activeProfileId is string && data.activeProfileId.size() >= 1 && data.activeProfileId.size() <= 64 &&
+             data.totalCommandsExecuted is int && data.totalCommandsExecuted >= 0 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidControlProfile(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 50 &&
+             data.defaultProfile is bool &&
+             data.mappings is map && data.mappings.size() <= 25 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidGestureConfig(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.gestureKey is string && data.gestureKey.size() >= 1 && data.gestureKey.size() <= 40 &&
+             data.displayNameAr is string && data.displayNameAr.size() >= 1 && data.displayNameAr.size() <= 60 &&
+             data.displayNameEn is string && data.displayNameEn.size() >= 1 && data.displayNameEn.size() <= 60 &&
+             data.descriptionAr is string && data.descriptionAr.size() <= 200 &&
+             data.descriptionEn is string && data.descriptionEn.size() <= 200 &&
+             data.actionKey is string && data.actionKey.size() >= 1 && data.actionKey.size() <= 40 &&
+             (!('targetAppPackage' in data) || (data.targetAppPackage is string && data.targetAppPackage.size() <= 120)) &&
+             (!('targetAppName' in data) || (data.targetAppName is string && data.targetAppName.size() <= 80)) &&
+             data.enabled is bool &&
+             data.custom is bool &&
+             data.sensitivity is int && data.sensitivity >= 1 && data.sensitivity <= 100 &&
+             data.holdDurationMs is int && data.holdDurationMs >= 150 && data.holdDurationMs <= 2000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidActivityLog(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.gestureKey is string && data.gestureKey.size() >= 1 && data.gestureKey.size() <= 40 &&
+             data.gestureLabel is string && data.gestureLabel.size() >= 1 && data.gestureLabel.size() <= 60 &&
+             data.actionKey is string && data.actionKey.size() >= 1 && data.actionKey.size() <= 40 &&
+             data.actionLabel is string && data.actionLabel.size() >= 1 && data.actionLabel.size() <= 80 &&
+             data.succeeded is bool &&
+             data.detailMessage is string && data.detailMessage.size() <= 200 &&
+             data.confidence is int && data.confidence >= 0 && data.confidence <= 100 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if isOwner(userId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'name', 'username', 'email', 'photo', 'language',
+                         'sensitivity', 'holdDurationMs', 'soundEnabled', 'vibrationEnabled',
+                         'batterySaver', 'preferredCamera', 'handPreference', 'pauseOnLeave',
+                         'syncHistoryEnabled', 'activeProfileId', 'totalCommandsExecuted',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'name', 'username', 'email', 'photo', 'language',
+                         'sensitivity', 'holdDurationMs', 'soundEnabled', 'vibrationEnabled',
+                         'batterySaver', 'preferredCamera', 'handPreference', 'pauseOnLeave',
+                         'syncHistoryEnabled', 'activeProfileId', 'totalCommandsExecuted',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       (
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'name', 'username', 'photo', 'updatedAt'
+                         ]) ||
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'language', 'sensitivity', 'holdDurationMs', 'soundEnabled',
+                           'vibrationEnabled', 'batterySaver', 'preferredCamera',
+                           'handPreference', 'pauseOnLeave', 'syncHistoryEnabled',
+                           'activeProfileId', 'updatedAt'
+                         ]) ||
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'totalCommandsExecuted', 'updatedAt'
+                         ])
+                       );
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      match /profiles/{profileId} {
+        allow get: if isOwner(userId) && isValidId(profileId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(profileId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'name', 'defaultProfile', 'mappings', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'name', 'defaultProfile', 'mappings', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidControlProfile(incoming());
+
+        allow update: if isOwner(userId) &&
+                         isValidId(profileId) &&
+                         isValidControlProfile(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'name', 'defaultProfile', 'mappings', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(profileId);
+      }
+
+      match /gestures/{gestureId} {
+        allow get: if isOwner(userId) && isValidId(gestureId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(gestureId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'gestureKey', 'displayNameAr', 'displayNameEn',
+                           'descriptionAr', 'descriptionEn', 'actionKey', 'enabled',
+                           'custom', 'sensitivity', 'holdDurationMs', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'gestureKey', 'displayNameAr', 'displayNameEn',
+                           'descriptionAr', 'descriptionEn', 'actionKey',
+                           'targetAppPackage', 'targetAppName', 'enabled',
+                           'custom', 'sensitivity', 'holdDurationMs', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidGestureConfig(incoming());
+
+        allow update: if isOwner(userId) &&
+                         isValidId(gestureId) &&
+                         isValidGestureConfig(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'gestureKey', 'displayNameAr', 'displayNameEn',
+                           'descriptionAr', 'descriptionEn', 'actionKey',
+                           'targetAppPackage', 'targetAppName', 'enabled',
+                           'sensitivity', 'holdDurationMs', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(gestureId);
+      }
+
+      match /activityLogs/{logId} {
+        allow get: if isOwner(userId) && isValidId(logId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(logId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'gestureKey', 'gestureLabel', 'actionKey',
+                           'actionLabel', 'succeeded', 'detailMessage', 'confidence', 'createdAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'gestureKey', 'gestureLabel', 'actionKey',
+                           'actionLabel', 'succeeded', 'detailMessage', 'confidence', 'createdAt'
+                         ]) &&
+                         isValidActivityLog(incoming());
+
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(logId);
+      }
+    }
+  }
+}

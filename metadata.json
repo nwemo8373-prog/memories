@@ -1,0 +1,6 @@
+{
+  "name": "NEGM GESTURE",
+  "description": "AI-powered touchless Android phone control using CameraX and on-device hand gesture recognition.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
